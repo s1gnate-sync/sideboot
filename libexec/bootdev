@@ -1,0 +1,28 @@
+#!/libexec/busybox ash
+
+set -eu
+
+device="${1:-}"
+shift
+
+if test -z "$device"; then
+	echo "device or token must be specified" >&2
+	exit 1
+fi
+
+if ! test -b "$device"; then
+	device="$(findfs "$device")"
+	if test -z "$device"; then
+		echo "can't find device with $($1) token" >&2
+		exit 2
+	fi
+fi
+
+bootdir="/run/$(basename $device)"
+mkdir -p "$bootdir"
+
+if ! mountpoint -q "$bootdir"; then
+	mount $device "$bootdir"
+fi
+
+echo $bootdir

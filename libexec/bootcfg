@@ -1,0 +1,8 @@
+#!/libexec/busybox ash
+
+set -eu
+
+test -e sideboot.cfg
+eval set -- $(cat sideboot.cfg)
+
+bootopt "$@"

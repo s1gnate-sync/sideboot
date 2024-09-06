@@ -1,0 +1,34 @@
+#!/libexec/busybox ash
+set -eu
+
+args="$(getopt -a -l kernel:,initramfs:,debug -o :dk:K:I:i: -- $@)"
+
+eval set -- "$args"
+
+kexec_kernel="vmlinuz"
+kexec_initrd=""
+kexec_cmdline=""
+
+while test "$#" -gt 0; do
+	case "$1" in
+	-K | -k | -kernel | --kernel)
+		shift
+		kexec_kernel="$1"
+		shift
+		;;
+	-I | -i | -initramfs | --initramfs)
+		shift
+		kexec_initrd="--ramdisk=$1"
+		shift
+		;;
+	--)
+		shift
+		kexec_cmdline="${*:-console=tty1 loglevel=7}"
+		set -
+		break
+		;;
+	esac
+done
+
+set - --load "$kexec_kernel" $kexec_initrd --command-line="$kexec_cmdline"
+getopt -s bash :-: -- "$@" | cut -c 5-

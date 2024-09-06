@@ -30,55 +30,36 @@ clear
 
 touch /run/.initialized
 
-bootfile="sideboot.cfg"
 bootparam=$(cat /proc/cmdline | xargs -n 1 | grep -F boot= | cut -d = -f 2-)
-if test -n "$bootparam"; then
-	mkdir -p /boot
-	if mountpoint -q /boot || mount $bootparam /boot; then
-		cd /boot
-		if test -e "$bootfile"; then
-			args="$(getopt -q -a -l kernel:,initramfs: -o :k:K:I:i: -- $(cat $bootfile))"
-			eval set -- "$args"
-			kexec_kernel="vmlinuz"
-			kexec_initrd=""
-			while test "$#" -gt 0; do
-				case "$1" in
-				-K | -k | -kernel | --kernel)
-					shift
-					kexec_kernel="$1"
-					shift
-					;;
-				-I | -i | -initramfs | --initramfs)
-					shift
-					kexec_initrd="--ramdisk=$1"
-					shift
-					;;
-				--)
-					shift
-					break
-					;;
-				*)
-					break
-					;;
-				esac
-			done
-			kexec_cmdline="${*:-console=tty1 loglevel=7}"
 
-			read -s -n1 -t3 key || key=
+dir=$(bootdev $bootparam || :)
+cd
+while true; do
+	test -d "$dir" || break
+	cd "$dir"
+	opts="$(bootcfg || :)"
+	test -n "$opts" || break
 
-			if test "$key" = "e"; then
-				echo "$kexec_cmdline" > /run/cmdline
-				vi /run/cmdline
-				kexec_cmdline="$(cat /run/cmdline)"
-			elif test "$key" = "x"; then 
-				exec setsid -c ash -i
-			fi
+	read -s -n1 -t3 key || key=
 
-			if /libexec/kexec --load "$kexec_kernel" $kexec_initrd --command-line="$kexec_cmdline"; then
-				exec /libexec/kexec --exec
-			fi
-		fi
+	if test "$key" = "e"; then
+		echo "$opts" >/run/opts
+		vi /run/opts
+		opts="$(cat /run/opts)"
+	elif test "$key" = "x"; then
+		break
 	fi
-fi
 
-exec setsid -c ash -i
+	bootkernel $opts
+done
+
+setsid -c ash -i
+
+cd /
+
+sync
+
+kill -TERM -1
+kill -KILL -1
+
+

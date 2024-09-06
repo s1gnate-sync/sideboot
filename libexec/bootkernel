@@ -1,0 +1,12 @@
+#!/libexec/busybox ash
+
+kexec="eval /libexec/kexec"
+if test -e /run/debug; then
+	set -x
+	kexec='echo /libexec/kexec'
+fi
+
+set -eu
+
+$kexec $@
+$kexec --exec
