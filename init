@@ -1,0 +1,84 @@
+#!/libexec/busybox ash
+
+if /libexec/busybox test -e /run/.initialized; then
+	exit
+fi
+
+/libexec/busybox reset
+
+export USER=root PATH=/bin:/libexec:/run/bin
+busybox rm -fr /bin /bbin
+busybox mkdir -p /bin /bbin /proc /run /dev /sys
+
+for cmd in $(busybox --list); do
+	busybox ln -s /libexec/busybox /bin/$cmd
+done
+
+mount -t sysfs -o nodev,noexec,nosuid sysfs /sys
+mount -t proc -o nodev,noexec,nosuid proc /proc
+mount -t tmpfs -o nosuid,nodev,mode=0755 run /run
+mount -t devtmpfs -o mode=0755,nosuid dev /dev
+
+ln -s /proc/self/fd /dev/fd
+mkdir -p /dev/pts /run/bin
+mount -t devpts devpts /dev/pts
+
+setfont -C /dev/tty0 /lib/font.gz
+
+reset
+clear
+
+touch /run/.initialized
+
+bootfile="sideboot.cfg"
+bootparam=$(cat /proc/cmdline | xargs -n 1 | grep -F boot= | cut -d = -f 2-)
+if test -n "$bootparam"; then
+	mkdir -p /boot
+	if mountpoint -q /boot || mount $bootparam /boot; then
+		cd /boot
+		if test -e "$bootfile"; then
+			args="$(getopt -q -a -l kernel:,initramfs: -o :k:K:I:i: -- $(cat $bootfile))"
+			eval set -- "$args"
+			kexec_kernel="vmlinuz"
+			kexec_initrd=""
+			while test "$#" -gt 0; do
+				case "$1" in
+				-K | -k | -kernel | --kernel)
+					shift
+					kexec_kernel="$1"
+					shift
+					;;
+				-I | -i | -initramfs | --initramfs)
+					shift
+					kexec_initrd="--ramdisk=$1"
+					shift
+					;;
+				--)
+					shift
+					break
+					;;
+				*)
+					break
+					;;
+				esac
+			done
+			kexec_cmdline="${*:-console=tty1 loglevel=7}"
+
+			read -s -n1 -t3 key || key=
+
+			if test "$key" = "e"; then
+				echo "$kexec_cmdline" > /run/cmdline
+				vi /run/cmdline
+				kexec_cmdline="$(cat /run/cmdline)"
+			elif test "$key" = "x"; then 
+				exec setsid -c ash -i
+			fi
+
+			if /libexec/kexec --load "$kexec_kernel" $kexec_initrd --command-line="$kexec_cmdline"; then
+				exec /libexec/kexec --exec
+			fi
+		fi
+	fi
+fi
+
+exec setsid -c ash -i

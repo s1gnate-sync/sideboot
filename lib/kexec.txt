@@ -1,0 +1,313 @@
+kexec(8)                         User Manuals                         kexec(8)
+
+NNAAMMEE
+       kexec - directly boot into a new kernel
+
+SSYYNNOOPPSSIISS
+       //ssbbiinn//kkeexxeecc [[--vv ((----vveerrssiioonn))]] [[--ff ((----ffoorrccee))]] [[--xx ((----nnoo--iiffddoowwnn))]] [[--yy
+       ((----nnoo--ssyynncc))]] [[--ll ((----llooaadd))]] [[--pp ((----llooaadd--ppaanniicc))]] [[--uu ((----uunnllooaadd))]] [[--ee
+       ((----eexxeecc))]] [[--tt ((----ttyyppee))]] [[----mmeemm--mmiinn==_a_d_d_r]] [[----mmeemm--mmaaxx==_a_d_d_r]]
+
+
+DDEESSCCRRIIPPTTIIOONN
+       kkeexxeecc is a system call that enables you to load and boot into another
+       kernel from the currently running kernel.  kkeexxeecc performs the function
+       of the boot loader from within the kernel. The primary difference
+       between a standard system boot and a kkeexxeecc boot is that the hardware
+       initialization normally performed by the BIOS or firmware (depending on
+       architecture) is not performed during a kkeexxeecc boot. This has the effect
+       of reducing the time required for a reboot.
+
+       Make sure you have selected CCOONNFFIIGG__KKEEXXEECC==yy when configuring the kernel.
+       The CCOONNFFIIGG__KKEEXXEECC option enables the kkeexxeecc system call.
+
+UUSSAAGGEE
+       Using kkeexxeecc consists of
+
+              (1) loading the kernel to be rebooted to into memory, and
+              (2) actually rebooting to the pre-loaded kernel.
+
+       To load a kernel, the syntax is as follows:
+
+              kkeexxeecc -l _k_e_r_n_e_l_-_i_m_a_g_e --append=_c_o_m_m_a_n_d_-_l_i_n_e_-_o_p_t_i_o_n_s
+              --initrd=_i_n_i_t_r_d_-_i_m_a_g_e
+
+       where _k_e_r_n_e_l_-_i_m_a_g_e is the kernel file that you intend to reboot to.
+
+       Insert the command-line parameters that must be passed to the new
+       kernel into _c_o_m_m_a_n_d_-_l_i_n_e_-_o_p_t_i_o_n_s.  Passing the exact contents of
+       /proc/cmdline into _c_o_m_m_a_n_d_-_l_i_n_e_-_o_p_t_i_o_n_s is the safest way to ensure
+       that correct values are passed to the rebooting kernel.
+
+       The optional _i_n_i_t_r_d_-_i_m_a_g_e is the initrd image to be used during boot.
+
+       It's also possible to invoke kkeexxeecc without an option parameter. In that
+       case, kexec loads the specified kernel and then invokes sshhuuttddoowwnn(8).
+       If the shutdown scripts of your Linux distribution support kexec-based
+       rebooting, they then call kkeexxeecc _-_e just before actually rebooting the
+       machine. That way, the machine does a clean shutdown including all
+       shutdown scripts.
+
+
+EEXXAAMMPPLLEE
+       For example, if the kernel image you want to reboot to is
+       //bboooott//vvmmlliinnuuxx, the contents of /proc/cmdline is rroooott==//ddeevv//hhddaa11, and the
+       path to the initrd is //bboooott//iinniittrrdd, then you would use the following
+       command to load the kernel:
+
+              kkeexxeecc -l //bboooott//vvmmlliinnuuxx
+              --append=rroooott==//ddeevv//hhddaa11 --initrd=//bboooott//iinniittrrdd
+
+       After this kernel is loaded, assuming the user-space supports kexec-
+       based rebooting, it can be booted to, with a clean shutdown, using the
+       command:
+
+              rreebboooott
+
+       Alternatively, it can also be booted to, without calling shutdown(8),
+       with the command:
+
+              kkeexxeecc -e
+
+
+OOPPTTIIOONNSS
+       --dd  ((----ddeebbuugg))
+              Enable debugging messages.
+
+       --SS  ((----ssttaattuuss))
+              Return 1 if the type (by default crash) is loaded, 0 if not. Can
+              be used in conjuction with -l or -p to toggle the type. Note
+              this option supersedes other options and it will
+              nnoott  llooaadd  oorr  uunnllooaadd  tthhee  kkeerrnneell..
+
+       --ee  ((----eexxeecc))
+              Run the currently loaded kernel. Note that it will reboot into
+              the loaded kernel without calling shutdown(8).
+
+       --ff  ((----ffoorrccee))
+              Force an immediate kkeexxeecc call, do not call sshhuuttddoowwnn(8) (contrary
+              to the default action without any option parameter). This option
+              performs the same actions like executing _-_l and _-_e in one call.
+
+       --hh  ((----hheellpp))
+              Open a help file for kkeexxeecc.
+
+       ----hhoottpplluugg
+              Setup kexec segments such that kernel can safely update them on
+              CPU/Memory hot add/remove events. If this option is enabled,
+              kernel does in-kernel update of kexec segments on CPU/Memory hot
+              add/remove events, thus avoiding the need to reload kdump
+              kernel.
+
+       --ii  ((----nnoo--cchheecckkss))
+              Fast reboot, no memory integrity checks.
+
+       --ll  ((----llooaadd))_ _k_e_r_n_e_l
+              Load the specified _k_e_r_n_e_l into the current kernel.
+
+       --pp  ((----llooaadd--ppaanniicc))
+              Load the new kernel for use on panic.
+
+       --tt  ((----ttyyppee==_t_y_p_e))
+              Specify that the new kernel is of this _t_y_p_e_.
+
+       --ss  ((----kkeexxeecc--ffiillee--ssyyssccaallll))
+              Specify that the new KEXEC_FILE_LOAD syscall should be used
+              exclusively.  Ignored on XEN.
+
+       --cc  ((----kkeexxeecc--ssyyssccaallll))
+              Specify that the old KEXEC_LOAD syscall should be used
+              exclusively.
+
+       --aa  ((----kkeexxeecc--ssyyssccaallll--aauuttoo))
+              Try the new KEXEC_FILE_LOAD syscall first and when it is not
+              supported or the kernel does not understand the supplied image
+              fall back to the old KEXEC_LOAD interface.
+
+              There is no one single interface that always works, so this is
+              the default.
+
+              KEXEC_FILE_LOAD is required on systems that use locked-down
+              secure boot to verify the kernel signature.  KEXEC_LOAD may be
+              also disabled in the kernel configuration.
+
+              KEXEC_LOAD is required for some kernel image formats and on
+              architectures that do not implement KEXEC_FILE_LOAD.
+
+       --uu  ((----uunnllooaadd))
+              Unload the current kkeexxeecc target kernel. If a capture kernel is
+              being unloaded then specify -p with -u.
+
+       --vv  ((----vveerrssiioonn))
+              Return the version number of the installed utility.
+
+       --xx  ((----nnoo--iiffddoowwnn))
+              Shut down the running kernel, but restore the interface on
+              reload.
+
+       --yy  ((----nnoo--ssyynncc))
+              Shut down the running kernel, but skip syncing the filesystems.
+
+       ----mmeemm--mmiinn==_a_d_d_r
+              Specify the lowest memory address _a_d_d_r to load code into.
+
+       ----mmeemm--mmaaxx==_a_d_d_r
+              Specify the highest memory address _a_d_d_r to load code into.
+
+       ----eennttrryy==_a_d_d_r
+              Specify the jump back address. (0 means it's not jump back or
+              preserve context)
+
+       ----llooaadd--pprreesseerrvvee--ccoonntteexxtt
+              Load the new kernel and preserve context of current kernel
+              during kexec.
+
+       ----llooaadd--jjuummpp--bbaacckk--hheellppeerr
+              Load a helper image to jump back to original kernel.
+
+       ----rreeuusseeiinniittrrdd
+              Reuse initrd from first boot.
+
+       ----pprriinntt--cckkrr--ssiizzee
+              Print crash kernel region size, if available.
+
+
+
+SSUUPPPPOORRTTEEDD KKEERRNNEELL FFIILLEE TTYYPPEESS AANNDD OOPPTTIIOONNSS
+       BBeeoobboooott--xx8866
+
+              ----aarrggss--eellff
+                     Pass ELF boot notes.
+
+              ----aarrggss--lliinnuuxx
+                     Pass Linux kernel style options.
+
+              ----rreeaall--mmooddee
+                     Use the kernel's real mode entry point.
+
+       eellff--xx8866
+
+              ----aappppeenndd==_s_t_r_i_n_g
+                     Append _s_t_r_i_n_g to the kernel command line.
+
+              ----ccoommmmaanndd--lliinnee==_s_t_r_i_n_g
+                     Set the kernel command line to _s_t_r_i_n_g.
+
+              ----rreeuussee--ccmmddlliinnee
+                     Use the command line from the running system. When a
+                     panic kernel is loaded, it strips the _c_r_a_s_h_k_e_r_n_e_l
+                     parameter automatically. The _B_O_O_T___I_M_A_G_E parameter is also
+                     stripped.
+
+              ----iinniittrrdd==_f_i_l_e
+                     Use _f_i_l_e as the kernel's initial ramdisk.
+
+              ----rraammddiisskk==_f_i_l_e
+                     Use _f_i_l_e as the kernel's initial ramdisk.
+
+       bbzzIImmaaggee--xx8866
+
+              ----aappppeenndd==_s_t_r_i_n_g
+                     Append _s_t_r_i_n_g to the kernel command line.
+
+              ----ccoommmmaanndd--lliinnee==_s_t_r_i_n_g
+                     Set the kernel command line to _s_t_r_i_n_g.
+
+              ----rreeuussee--ccmmddlliinnee
+                     Use the command line from the running system. When a
+                     panic kernel is loaded, it strips the _c_r_a_s_h_k_e_r_n_e_l
+                     parameter automatically. The _B_O_O_T___I_M_A_G_E parameter is also
+                     stripped.
+
+              ----iinniittrrdd==_f_i_l_e
+                     Use _f_i_l_e as the kernel's initial ramdisk.
+
+              ----rraammddiisskk==_f_i_l_e
+                     Use _f_i_l_e as the kernel's initial ramdisk.
+
+              ----rreeaall--mmooddee
+                     Use real-mode entry point.
+
+       mmuullttiibboooott--xx8866
+
+              ----ccoommmmaanndd--lliinnee==_s_t_r_i_n_g
+                     Set the kernel command line to _s_t_r_i_n_g.
+
+              ----rreeuussee--ccmmddlliinnee
+                     Use the command line from the running system. When a
+                     panic kernel is loaded, it strips the _c_r_a_s_h_k_e_r_n_e_l
+                     parameter automatically. The _B_O_O_T___I_M_A_G_E parameter is also
+                     stripped.
+
+              ----mmoodduullee==_m_o_d _a_r_g_1 _a_r_g_2 _._._.
+                     Load module _m_o_d with command-line arguments _a_r_g_1 _a_r_g_2 _._._.
+                     This parameter can be specified multiple times.
+
+       mmuullttiibboooott22--xx8866
+
+              ----ccoommmmaanndd--lliinnee==_s_t_r_i_n_g
+                     Set the kernel command line to _s_t_r_i_n_g.
+
+              ----rreeuussee--ccmmddlliinnee
+                     Use the command line from the running system. When a
+                     panic kernel is loaded, it strips the _c_r_a_s_h_k_e_r_n_e_l
+                     parameter automatically. The _B_O_O_T___I_M_A_G_E parameter is also
+                     stripped.
+
+              ----mmoodduullee==_m_o_d _a_r_g_1 _a_r_g_2 _._._.
+                     Load module _m_o_d with command-line arguments _a_r_g_1 _a_r_g_2 _._._.
+                     This parameter can be specified multiple times.
+
+       eellff--ppppcc6644
+
+              ----rreeuussee--ccmmddlliinnee
+                     Use the kernel command line from the running system.
+
+              ----ccoommmmaanndd--lliinnee==_s_t_r_i_n_g
+                     Set the kernel command line to _s_t_r_i_n_g_.
+
+              ----aappppeenndd==_s_t_r_i_n_g
+                     Set the kernel command line to _s_t_r_i_n_g_.
+
+              ----rraammddiisskk==_f_i_l_e
+                     Use _f_i_l_e as the initial RAM disk.
+
+              ----iinniittrrdd==_f_i_l_e
+                     Use _f_i_l_e as the initial RAM disk.
+
+              ----ddeevviicceettrreeeebblloobb==_f_i_l_e
+                     Specify device tree blob file. Not applicable while using
+                     --kexec-file-syscall.
+
+              ----ddttbb==_f_i_l_e
+                     Specify device tree blob file. Not applicable while using
+                     --kexec-file-syscall.
+
+
+AARRCCHHIITTEECCTTUURREE OOPPTTIIOONNSS
+       ----ccoonnssoollee--sseerriiaall
+              Enable the serial console.
+
+       ----ccoonnssoollee--vvggaa
+              Enable the VGA console.
+
+       ----eellff3322--ccoorree--hheeaaddeerrss
+              Prepare core headers in ELF32 format.
+
+       ----eellff6644--ccoorree--hheeaaddeerrss
+              Prepare core headers in ELF64 format.
+
+       ----rreesseett--vvggaa
+              Attempt to reset a standard VGA device.
+
+       ----sseerriiaall==_p_o_r_t
+              Specify the serial _p_o_r_t for debug output.
+
+       ----sseerriiaall--bbaauudd==_b_a_u_d___r_a_t_e
+              Specify the _b_a_u_d _r_a_t_e of the serial port.
+
+       ----ddtt--nnoo--oolldd--rroooott
+              Do not reuse old kernel root=<device> param while creating
+              flatten device tree.
+
+Linux                             April 2006                          kexec(8)
