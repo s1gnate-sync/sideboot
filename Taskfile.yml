@@ -1,0 +1,72 @@
+---
+version: '3'
+
+tasks:
+  bootloader:
+    silent: true
+    cmds:
+      - task: build 
+      - task: initfs 
+      - task: kpart 
+  build:
+    cmds:
+      - CGO_ENABLED=0 go build -o {{.out}} -trimpath
+      - strip {{.out}}
+    dir: cmd
+    silent: true
+    vars:
+      out: ../init
+  clean:
+    cmds:
+      - rm -f init bootloader*.bin *.cpio*
+    silent: true
+  default:
+    aliases: ["run"]
+    cmds:
+      - mkdir -p {{.dir}}
+      - defer: rm -fr {{.dir}}
+      - env TMPDIR={{.dir}} go run cmd/main.go
+    silent: true
+    vars:
+      dir: ${TMPDIR:-/tmp}/$(basename $PWD)
+  gofumpt:
+    aliases: ["fmt"]
+    cmds:
+      - gofumpt -l . | xargs -rtn1 gofumpt -w
+    silent: true
+  initfs:
+    cmds:
+      - find init lib libexec -print0 | cpio -v -o -d -H newc > initramfs.cpio
+      - xz -kf -9 --check=crc32 initramfs.cpio
+    silent: true
+  kpart:
+    cmds:
+      - cmd: |
+          depthchargectl build $board_arg \
+          --verbose \
+          --output bootloader.kpart.bin \
+          --root none \
+          --boot-mountpoint none \
+          --root-mountpoint none \
+          --kernel-cmdline "console=tty1 loglevel=1 sideboot.partition=UUID=3f99f65c-4c1d-4994-917c-ebcee66c9a92" \
+          --kernel kernel/vmlinuz \
+          --fdtdir kernel/dtbs \
+          --initramfs initramfs.cpio.xz \
+          --board arm64-generic 
+ 
+    silent: true
+  mod:
+    cmds:
+      - go mod tidy
+      - go mod vendor
+    silent: true
+  staticcheck:
+    aliases: ["lint"]
+    cmds:
+      - cmd: find {{.ITEM}} -type f -iname '*.go' | xargs -r staticcheck
+        for:
+          var: packages
+    silent: true
+    vars:
+      packages:
+        sh: find . -maxdepth 1 -type d -not  -iname '.*'
