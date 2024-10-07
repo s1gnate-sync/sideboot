@@ -128,7 +128,7 @@ func CreateDirs() {
 }
 
 func DebugShell() {
-	cmd := osexec.Command("/libexec/busybox", "ash")
+	cmd := osexec.Command("/libexec/busybox", "ash", "-l")
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setsid:  true,
 		Setctty: true,
