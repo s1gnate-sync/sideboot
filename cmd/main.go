@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -104,6 +105,14 @@ func tryBoot() bool {
 func main() {
 	resetBootOptions()
 	sysinit.Init()
+
+	fmt.Print(`                                                                              
+      _/_/_/  _/        _/            _/                              _/      
+   _/              _/_/_/    _/_/    _/_/_/      _/_/      _/_/    _/_/_/_/   
+    _/_/    _/  _/    _/  _/_/_/_/  _/    _/  _/    _/  _/    _/    _/        
+       _/  _/  _/    _/  _/        _/    _/  _/    _/  _/    _/    _/         
+_/_/_/    _/    _/_/_/    _/_/_/  _/_/_/      _/_/      _/_/        _/_/      
+                                                                             `)
 
 	if !tryBoot() {
 		os.Chdir("/")
