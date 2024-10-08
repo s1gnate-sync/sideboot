@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"syscall"
+	"time"
 
 	"sideboot/sysinit"
 
@@ -102,19 +103,38 @@ func tryBoot() bool {
 	return false
 }
 
+func wait() bool {
+	if !sysinit.AsInit() {
+		return true
+	}
+
+	ch := make(chan bool)
+	go func() {
+		time.Sleep(time.Second)
+		ch <- true
+	}()
+	go func() {
+		fmt.Scanln()
+		ch <- false
+	}()
+	return <-ch
+}
+
 func main() {
 	resetBootOptions()
 	sysinit.Init()
 
-	fmt.Print(`                                                                              
+	if sysinit.AsInit() {
+		fmt.Print(`                                                                              
       _/_/_/  _/        _/            _/                              _/      
    _/              _/_/_/    _/_/    _/_/_/      _/_/      _/_/    _/_/_/_/   
     _/_/    _/  _/    _/  _/_/_/_/  _/    _/  _/    _/  _/    _/    _/        
        _/  _/  _/    _/  _/        _/    _/  _/    _/  _/    _/    _/         
 _/_/_/    _/    _/_/_/    _/_/_/  _/_/_/      _/_/      _/_/        _/_/      
                                                                              `)
+	}
 
-	if !tryBoot() {
+	if !wait() || !tryBoot() {
 		os.Chdir("/")
 		sysinit.DebugShell()
 	}
