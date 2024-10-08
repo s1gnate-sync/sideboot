@@ -1,1 +1,6 @@
-.KEEP
+*.cpio
+*.bin
+init
+contrib/busybox-*/
+*.cpio.gz
+*.cpio.xz
