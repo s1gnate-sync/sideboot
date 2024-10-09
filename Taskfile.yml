@@ -48,11 +48,11 @@ tasks:
           --root none \
           --boot-mountpoint none \
           --root-mountpoint none \
-          --kernel-cmdline "console=tty1 loglevel=1 sideboot.partition=UUID=3f99f65c-4c1d-4994-917c-ebcee66c9a92" \
+          --kernel-cmdline "console=tty1 loglevel=1 sideboot.config=sideboot.trogdor.cfg sideboot.partition=UUID=3f99f65c-4c1d-4994-917c-ebcee66c9a92" \
           --kernel kernel/vmlinuz \
           --fdtdir kernel/dtbs \
-          --initramfs initramfs.cpio.xz \
-          --board arm64-generic 
+          --initramfs initramfs.cpio.xz
+          # --board arm64-generic 
  
     silent: true
   mod:

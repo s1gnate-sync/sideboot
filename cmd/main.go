@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -19,6 +20,7 @@ const (
 	ramdiskOption   = "sideboot.ramdisk"
 	cmdlineOption   = "sideboot.cmdline"
 	partitionOption = "sideboot.partition"
+	configOption    = "sideboot.config"
 )
 
 func resetBootOptions() {
@@ -26,6 +28,7 @@ func resetBootOptions() {
 	sysinit.Args[shellOption] = ""
 	sysinit.Args[kernelOption] = ""
 	sysinit.Args[ramdiskOption] = ""
+	sysinit.Args[configOption] = ""
 	sysinit.Args[cmdlineOption] = "console=tty1 loglevel=4"
 }
 
@@ -51,7 +54,14 @@ func tryBoot() bool {
 		return false
 	}
 
-	cfg := strings.ReplaceAll(sysinit.ReadFile("/tmp/boot/sideboot.cmdline"), "\n", " ")
+	cfg := ""
+	if sysinit.Args[configOption] != "" {
+			cfg = strings.ReplaceAll(sysinit.ReadFile(filepath.Join("/tmp/boot/", sysinit.Args[configOption])), "\n", " ")
+	}
+	
+	if cfg == "" {
+		cfg = strings.ReplaceAll(sysinit.ReadFile(filepath.Join("/tmp/boot/sideboot.cfg")), "\n", " ")
+	}
 
 	cfgArgs, err := shellquote.Split(cfg)
 	if err != nil {
@@ -68,6 +78,8 @@ func tryBoot() bool {
 	}
 
 	if bootPartition != sysinit.Args[partitionOption] {
+		os.Chdir("/")
+		syscall.Unmount("/tmp/boot", 0)
 		return tryBoot()
 	}
 
