@@ -25,10 +25,6 @@ func (e Exec) Run() exec.Status {
 		log.Printf("[%d] %s: %s", status.PID, e[0], line)
 	}
 
-	if status.Exit != 0 {
-		log.Printf("[%d] %s: %d", status.PID, e[0], status.Exit)
-	}
-
 	return status
 }
 

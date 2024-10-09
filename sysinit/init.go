@@ -12,10 +12,8 @@ import (
 )
 
 var (
-	Verbose = false
-	Quiet   = false
-	Args    = make(map[string]string)
-	inited  = false
+	Args   = make(map[string]string)
+	inited = false
 )
 
 func AsInit() bool {
@@ -48,7 +46,7 @@ func init() {
 
 func Init() {
 	if inited {
-		ParseArgs(os.Args[1:])
+		ParseArgs([]string{})
 		return
 	}
 
@@ -57,10 +55,6 @@ func Init() {
 	MountFilesystems()
 
 	ParseArgs([]string{})
-	if Args["debug"] == "1" {
-		Quiet = false
-		Verbose = true
-	}
 
 	SetLog()
 	InstallBusybox()
@@ -78,17 +72,11 @@ func MakeDevs() {
 }
 
 func SetLog() {
-	if !Quiet || Verbose {
-		log.SetOutput(os.Stderr)
-	}
+	// log.SetOutput(os.Stderr)
 
 	level := 0
 	if _, err := fmt.Sscanf(Args["loglevel"], "%d", &level); err != nil {
 		level = 4
-	}
-
-	if Verbose {
-		level = 7
 	}
 
 	unix.Syscall(unix.SYS_SYSLOG, unix.SYSLOG_ACTION_CONSOLE_LEVEL, 0, uintptr(level))
@@ -139,10 +127,13 @@ func DebugShell() {
 	cmd.Stderr = os.Stderr
 
 	cmd.Run()
-	os.Exit(cmd.ProcessState.ExitCode())
 }
 
 func Exit() {
+	if inited {
+		return
+	}
+
 	WaitOrphans()
 	unix.Sync()
 	os.Exit(0)

@@ -32,8 +32,6 @@ func ParseArgs(args []string) {
 
 	for _, arg := range args {
 		key, val, _ := strings.Cut(arg, "=")
-		if strings.HasPrefix(key, "--") {
-			Args[key[2:]] = val
-		}
+		Args[key] = val
 	}
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,13 +31,25 @@ func resetBootOptions() {
 	sysinit.Args[cmdlineOption] = "console=tty1 loglevel=4"
 }
 
+var bootMsg string
+
 func tryBoot() bool {
+	bootMsg = ""
+
+	if !wait() {
+		bootMsg = "user gesture interrupted boot"
+		return false
+	}
+
 	if sysinit.Args[partitionOption] == "" {
+		bootMsg = "no boot partition has been specified"
 		return false
 	}
 
 	filename := (sysinit.Exec{"/bin/findfs", sysinit.Args[partitionOption]}).Line(0)
 	if filename == "" {
+		bootMsg = fmt.Sprintf("boot partition %s doesn't point to device", sysinit.Args[partitionOption])
+
 		return false
 	}
 
@@ -50,30 +61,36 @@ func tryBoot() bool {
 	}()
 
 	if err != nil {
-		log.Print(filename, err)
+		bootMsg = fmt.Sprintf("error on mount %s: %s", filename, err)
 		return false
 	}
 
 	cfg := ""
 	if sysinit.Args[configOption] != "" {
-			cfg = strings.ReplaceAll(sysinit.ReadFile(filepath.Join("/tmp/boot/", sysinit.Args[configOption])), "\n", " ")
+		cfg = strings.ReplaceAll(sysinit.ReadFile(filepath.Join("/tmp/boot/", sysinit.Args[configOption])), "\n", " ")
 	}
-	
+
 	if cfg == "" {
 		cfg = strings.ReplaceAll(sysinit.ReadFile(filepath.Join("/tmp/boot/sideboot.cfg")), "\n", " ")
 	}
 
 	cfgArgs, err := shellquote.Split(cfg)
 	if err != nil {
-		log.Print("cfgArgs", filename, err)
+		bootMsg = "commmandline to next kernel contains garbage"
 		return false
+	}
+
+	if !sysinit.AsInit() {
+		for _, arg := range os.Args[1:] {
+			cfgArgs = append(cfgArgs, "sideboot."+arg)
+		}
 	}
 
 	bootPartition := sysinit.Args[partitionOption]
 	sysinit.ParseArgs(cfgArgs)
 
 	if sysinit.AsInit() && sysinit.Args[shellOption] == "1" {
-		log.Print("welcome to sideboot shell")
+		bootMsg = "not booting because default action is set to debug shell"
 		return false
 	}
 
@@ -88,12 +105,13 @@ func tryBoot() bool {
 	kexec := sysinit.Exec{"/libexec/kexec", "--command-line", sysinit.Args[cmdlineOption]}
 
 	if sysinit.Args[kernelOption] == "" || !sysinit.FileExist(sysinit.Args[kernelOption]) {
+		bootMsg = fmt.Sprintf("boot requires kernel to be set to existing file on device %s", bootPartition)
 		return false
 	}
 
 	if sysinit.Args[ramdiskOption] != "" {
 		if !sysinit.FileExist(sysinit.Args[ramdiskOption]) {
-			log.Print("ramdisk", sysinit.Args[ramdiskOption], "not found")
+			bootMsg = fmt.Sprintf("ramdisk is set to non-existing file '%s' on %s", sysinit.Args[ramdiskOption], bootPartition)
 			return false
 		}
 
@@ -101,17 +119,22 @@ func tryBoot() bool {
 	}
 
 	kexec = append(kexec, "--load", sysinit.Args[kernelOption])
+
 	status := kexec.Run()
 	if status.Exit == 0 {
 		status = (sysinit.Exec{"/libexec/kexec", "--exec"}).Run()
 		if status.Exit == 0 {
 			return true
 		}
+
+		bootMsg = "kernel exec"
+	} else {
+		bootMsg = "kernel load"
 	}
 
-	log.Print("kexec", status.Exit)
-	os.Chdir("/")
+	bootMsg = fmt.Sprintf("%s failed with status %d\n", bootMsg, status.Exit)
 
+	os.Chdir("/")
 	return false
 }
 
@@ -137,19 +160,21 @@ func main() {
 	sysinit.Init()
 
 	if sysinit.AsInit() {
-		fmt.Print(`                                                                              
+		fmt.Print(`                                       		
+
       _/_/_/  _/        _/            _/                              _/      
    _/              _/_/_/    _/_/    _/_/_/      _/_/      _/_/    _/_/_/_/   
     _/_/    _/  _/    _/  _/_/_/_/  _/    _/  _/    _/  _/    _/    _/        
        _/  _/  _/    _/  _/        _/    _/  _/    _/  _/    _/    _/         
 _/_/_/    _/    _/_/_/    _/_/_/  _/_/_/      _/_/      _/_/        _/_/      
-                                                                             `)
+`)
 	}
 
-	if !wait() || !tryBoot() {
-		os.Chdir("/")
-		sysinit.DebugShell()
+	defer sysinit.Exit()
+	if tryBoot() {
+		return
 	}
 
-	sysinit.Exit()
+	fmt.Printf("%s...\n", bootMsg)
+	sysinit.DebugShell()
 }
